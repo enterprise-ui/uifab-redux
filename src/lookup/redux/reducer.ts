@@ -25,7 +25,7 @@ export const initialState = {
 export const lookupReducer = createReducer<IState, Action>(initialState)
   //pushLookupItems
   .handleAction(actions.pushLookupItems, (state, action) => {
-    const { endpointName, options, selectKey } = action.payload
+    const { endpointName, options, optionValueKey } = action.payload
 
     return {
       ...state,
@@ -33,7 +33,7 @@ export const lookupReducer = createReducer<IState, Action>(initialState)
         ...state[endpointName],
         items: {
           ...get(state, `${endpointName}.items`, {}),
-          ...reduceLookup(options, selectKey),
+          ...reduceLookup(options, optionValueKey),
         },
       },
     }
@@ -146,11 +146,11 @@ export const lookupReducer = createReducer<IState, Action>(initialState)
 //   initialState: [] as IState[],
 //   reducers: {
 //     pushLookupItems(state, action: PayloadAction<IPushLookupItems>) {
-//       const { endpointName, options, selectKey } = action.payload
+//       const { endpointName, options, optionValueKey } = action.payload
 
 //       state[endpointName].items = {
 //         ...get(state, `${endpointName}.items`, {}),
-//         ...reduceLookup(options, selectKey),
+//         ...reduceLookup(options, optionValueKey),
 //       }
 //     },
 //   },

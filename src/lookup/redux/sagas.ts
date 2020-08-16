@@ -8,11 +8,11 @@ import { json2qs } from '../../utils/json2qs'
 import { reduceLookup } from '../utils/reduceLookup'
 
 import {
-  ISelectProps,
   ILabelProps,
   ELabelType,
   ILoadOptionsQuery,
   ILookupLoadQuery,
+  ISelectBaseProps,
 } from '../interfaces/lookup'
 
 const requestBuilders = {
@@ -22,26 +22,26 @@ const requestBuilders = {
   },
   pageable: {
     label: (value: string[], props: ILabelProps) => {
-      const { valueField, filter, labelFilter } = props
+      const { labelIdsKey, filter, labelFilter } = props
       let newValue = value
 
-      if (valueField === 'uuids' || valueField === 'ids') {
+      if (labelIdsKey === 'uuids' || labelIdsKey === 'ids') {
         newValue = Array.isArray(value) ? value : [value]
       }
 
       return {
-        [String(valueField)]: newValue,
+        [String(labelIdsKey)]: newValue,
         pageSize: 50,
         pageNumber: 0,
         ...filter,
         ...labelFilter,
       }
     },
-    select: (text: string, props: ISelectProps) => {
-      const { viewField, filter, selectFilter } = props
+    select: (text: string, props: ISelectBaseProps) => {
+      const { selectSearchKey, filter, selectFilter } = props
 
       return {
-        [String(viewField)]: text,
+        [String(selectSearchKey)]: text,
         pageSize: 50,
         pageNumber: 0,
         ...filter,
@@ -51,23 +51,24 @@ const requestBuilders = {
   },
   paginalWithQuery: {
     label: (value: string[], props: ILabelProps) => {
-      const { valueField, filter, labelFilter } = props
-
+      const { labelIdsKey, filter, labelFilter } = props
       let newValue = value
-      if (valueField === 'uuids') {
+
+      if (labelIdsKey === 'uuids') {
         newValue = Array.isArray(value) ? value : [value]
       }
 
       return {
-        [String(valueField)]: newValue,
+        [String(labelIdsKey)]: newValue,
         ...filter,
         ...labelFilter,
       }
     },
-    select: (text: string, props: ISelectProps) => {
-      const { viewField, filter, selectFilter } = props
+    select: (text: string, props: ISelectBaseProps) => {
+      const { selectSearchKey, filter, selectFilter } = props
+
       return {
-        [String(viewField)]: text,
+        [String(selectSearchKey)]: text,
         ...filter,
         ...selectFilter,
       }
@@ -78,7 +79,6 @@ const requestBuilders = {
 function* getSelectRequestParams(payload: ILoadOptionsQuery) {
   const {
     endpointName,
-    endpointBranch,
     type,
     requestBody,
     selectRequestBuilder,
@@ -95,9 +95,7 @@ function* getSelectRequestParams(payload: ILoadOptionsQuery) {
       ? selectRequestBuilder(text, otherProps)
       : requestBuilders[String(type)].select(text, otherProps))
 
-  const lookupUrl = yield select((state) =>
-    get(state, `config.${endpointName}.endpoints.${endpointBranch || 'getAll'}`, '')
-  )
+  const lookupUrl = yield select((state) => get(state, `restConfig.${endpointName}.getAll`, ''))
   const url = templateResolver ? template.parse(lookupUrl).expand(templateResolver) : lookupUrl
 
   return { requestData, url, isLoaded: loadingNotNeeded }
@@ -105,7 +103,6 @@ function* getSelectRequestParams(payload: ILoadOptionsQuery) {
 function* getLabelRequestParams(payload: ILookupLoadQuery) {
   const {
     endpointName,
-    endpointBranch,
     type,
     requestBody,
     selectRequestBuilder,
@@ -129,20 +126,24 @@ function* getLabelRequestParams(payload: ILookupLoadQuery) {
       ? labelRequestBuilder(value, otherProps)
       : requestBuilders[String(type)].label(value, otherProps))
 
-  const lookupUrl = yield select((state) =>
-    get(state, `config.${endpointName}.endpoints.${endpointBranch || 'getAll'}`, '')
-  )
+  const lookupUrl = yield select((state) => get(state, `restConfig.${endpointName}.getAll`, ''))
   const url = templateResolver ? template.parse(lookupUrl).expand(templateResolver) : lookupUrl
 
   return { requestData, url, isLoaded: loadingNotNeeded }
 }
 
 export function* loadSelectSaga(action: ReturnType<typeof loadOptions.request>) {
-  const { endpointName, method, query, contentPath, name, selectFilterOptions } = action.payload
+  const {
+    endpointName,
+    method,
+    query,
+    contentPath,
+    name,
+    responseOptionsTransform,
+  } = action.payload
 
   try {
     const { requestData, url } = yield getSelectRequestParams(action.payload)
-    console.log({ payload: action.payload, requestData })
     const loadedData = yield api[method || 'get']({
       url: query ? `${url}?${json2qs(query)}` : url,
       data: requestData,
@@ -151,7 +152,7 @@ export function* loadSelectSaga(action: ReturnType<typeof loadOptions.request>) 
     const options = contentPath ? get(loadedData, contentPath) : loadedData
 
     console.log('asyncSelect loaded', {
-      options: selectFilterOptions ? selectFilterOptions(options) : options,
+      options: responseOptionsTransform ? responseOptionsTransform(options) : options,
       loadedData,
       name: endpointName,
       requestBody: requestData,
@@ -159,7 +160,7 @@ export function* loadSelectSaga(action: ReturnType<typeof loadOptions.request>) 
 
     yield put(
       loadOptions.success({
-        options: selectFilterOptions ? selectFilterOptions(options) : options,
+        options: responseOptionsTransform ? responseOptionsTransform(options) : options,
         loadedData,
         endpointName,
         name,
@@ -172,7 +173,7 @@ export function* loadSelectSaga(action: ReturnType<typeof loadOptions.request>) 
 }
 
 export function* loadLabelSaga(action: ReturnType<typeof loadLookup.request>) {
-  const { endpointName, method, query, contentPath, selectKey, value } = action.payload
+  const { endpointName, method, query, contentPath, optionValueKey, value } = action.payload
 
   try {
     const { requestData, url, isLoaded } = yield getLabelRequestParams(action.payload)
@@ -185,7 +186,7 @@ export function* loadLabelSaga(action: ReturnType<typeof loadLookup.request>) {
 
       const lookupValue = reduceLookup(
         contentPath ? get(loadedData, contentPath) : loadedData,
-        selectKey
+        optionValueKey
       )
 
       console.log('Label loaded', {

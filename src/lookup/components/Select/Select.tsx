@@ -1,316 +1,165 @@
 import * as React from 'react'
-import enhanceWithClickOutside from 'react-click-outside'
-import { hasValue } from '../../../utils/hasValue'
-import { SelectContext } from './SelectContext'
+import debounce from 'lodash/debounce'
 
-import {
-  SelectStyled,
-  SelectClearButtonIcon,
-  SelectControlBar,
-  SelectArrowButtonIcon,
-  SelectLoader,
-  Inner,
-  ValueWrapper,
-  Placeholder,
-  Label,
-  OptionsWrapper,
-} from './SelectStyles'
+import { SelectLayout, ISelectLayoutProps } from './SelectLayout'
+import { IMeta } from '../../interfaces/input'
 
-import { SelectInput } from './SelectInput'
-import { SelectOptions } from './SelectOptions'
-import { SelectOption } from './SelectOption'
-import { SelectValue } from './SelectValue'
-import { SelectMultiValues } from './SelectMultiValues'
-import { SelectEmpty } from './SelectEmpty'
-import { SelectErrors } from './SelectErrors'
-import { SelectButton } from './SelectButton'
-import { SelectActionBar } from './SelectActionBar'
-import { SelectBadge } from './SelectBadge'
+export type TSelectValue = string[] | string | null
 
-import { IStyleMods } from './SelectStyles'
-
-type TValue = string | string[] | null
-export interface ISelectProps {
-  value?: TValue
-  placeholder?: string
-  label?: string
-  disabled?: boolean
-  required?: boolean
-  className?: string
-  noUnderline?: boolean
-  isExtendable?: boolean
-  readOnly?: boolean
-  isLoading?: boolean
-  mod?: string
-  isError?: boolean
-  isMultiSelect?: boolean
-  isNotClearable?: boolean
-  isClearable?: boolean
-  onChange?(value?: TValue): void
-  onOptionsToggle?(flag?: boolean): void
-  onClear?(): void
+interface ISelectProps extends ISelectLayoutProps {
+  name?: string
+  meta?: IMeta
+  currentOption?: object
+  options?: object[]
+  withButton?: boolean
+  buttonText?: string
+  loadedData?: object[]
+  optionValueKey?: string
+  selectSearchKey?: string
+  lettersCountForSearchTrigger?: number
+  onChange?: (value?: TSelectValue, option?: object | object[]) => void
+  handleChange?: (value?: TSelectValue, loadedData?: object[]) => void
+  onButtonClick?: (e: React.SyntheticEvent<HTMLButtonElement>) => void
+  onLoadOptions?: (text?: string) => void
 }
 
-export interface ISelectState {
-  showOptions: boolean
+interface ISelectStata {
   inputValue?: string
 }
 
-export class BaseSelect extends React.Component<ISelectProps, ISelectState> {
-  public static displayName = 'Select'
-  public static Input = SelectInput
-  public static Options = SelectOptions
-  public static Option = SelectOption
-  public static Value = SelectValue
-  public static Values = SelectMultiValues
-  public static Empty = SelectEmpty
-  public static Errors = SelectErrors
-  public static Button = SelectButton
-  public static ActionBar = SelectActionBar
-  public static Badge = SelectBadge
-
-  constructor(props: ISelectProps) {
-    super(props)
-
-    this.state = {
-      showOptions: false,
-    }
+export class Select extends React.PureComponent<ISelectProps, ISelectStata> {
+  lastQueryText?: string
+  isLoaded = false
+  state = {
+    inputValue: '',
   }
 
-  /** Ref-ссылка на поле ввода. */
-  private inputElement!: HTMLInputElement
+  /** Запускает загрузку отфильтрованных опций по параметру text */
+  onLoad = (text?: string) => {
+    if (text !== this.lastQueryText || !this.isLoaded) {
+      this.lastQueryText = text
 
-  /**
-   * Обработчик переключения состояния списка опций.
-   */
-  private handleToggleOptions = () => {
-    this.state.showOptions ? this.handleHideOptions() : this.handleShowOptions()
-  }
-
-  /**
-   * Обработчик открытия списка опций.
-   */
-  private handleShowOptions = () => {
-    if (!this.props.disabled && !this.state.showOptions) {
-      this.setState(
-        {
-          showOptions: true,
-        },
-        () => {
-          this.props.onOptionsToggle && this.props.onOptionsToggle(true)
-          this.inputElement && this.inputElement.focus()
-        }
-      )
-    }
-  }
-  /**
-   * Обработчик закрытия списка опций.
-   */
-  private handleHideOptions = () => {
-    if (this.state.showOptions) {
-      this.setState(
-        {
-          showOptions: false,
-        },
-        () => {
-          this.props.onOptionsToggle && this.props.onOptionsToggle(false)
-          this.inputElement && this.inputElement.blur()
-        }
-      )
-    }
-  }
-
-  /**
-   * Обработчик выбора опции.
-   *
-   * @param {TValue} newValue Обновлённое значение.
-   */
-  private handleSelectOption = (newValue: string) => {
-    const { onChange, value, isMultiSelect } = this.props
-
-    if (isMultiSelect) {
-      if (onChange) {
-        if (!value) {
-          onChange([newValue])
-        } else if (Array.isArray(value) && !value.includes(newValue)) {
-          onChange([...value, newValue])
-        }
+      if (this.props.onLoadOptions) {
+        this.props.onLoadOptions(text)
+        this.isLoaded = true
       }
-    } else {
-      // Если значение изменилось, то вызываем обработчик.
-      if (onChange && value !== newValue) {
-        this.setState({ inputValue: newValue })
-        onChange(newValue)
+    }
+  }
+  loadOnChange = debounce(this.onLoad, 300)
+
+  /** Запускает this.loadOnChange если запрос равен или длиннее 3х символов */
+  inputOnChange = (e) => {
+    const { lettersCountForSearchTrigger } = this.props
+
+    this.setState({ inputValue: e.target.value }, () => {
+      const lettersCount = lettersCountForSearchTrigger ? lettersCountForSearchTrigger : 3
+
+      if (this.state.inputValue && this.state.inputValue.length >= lettersCount) {
+        this.loadOnChange(this.state.inputValue)
       }
-      this.handleHideOptions()
+    })
+  }
+
+  /** Устанавливает текст инпута по значению селекта */
+  setInputBySelectValue = (value) => {
+    const { options, optionValueKey, selectSearchKey } = this.props
+
+    if (options) {
+      const currentOption = options.find((item) => item[optionValueKey || 'id'] === value)
+      const text = currentOption ? currentOption[selectSearchKey || 'value_i18n'] : ''
+
+      this.setState({ inputValue: text })
     }
   }
 
-  /**
-   * Обработчик удаления опции.
-   *
-   * @param {string} valueForRemove Обновлённое значение.
-   */
-  private handleRemoveOption = (valueForRemove: string) => {
-    const { onChange, value } = this.props
-    const newValue = (Array.isArray(value) ? value : []).filter(
-      (option) => option !== valueForRemove
-    )
+  /** Устанавливает значение селекта */
+  selectOnChange = (value?: TSelectValue) => {
+    const {
+      loadedData,
+      options = [],
+      optionValueKey,
+      isMultiSelect,
+      onChange,
+      handleChange,
+    } = this.props
+
+    const currentOption = isMultiSelect
+      ? value && value.length
+        ? options.filter((item) => value.includes(item[optionValueKey || 'id']))
+        : []
+      : options.find((item) => item[optionValueKey || 'id'] === value)
 
     if (onChange) {
-      if (newValue.length === 0) {
-        onChange(null)
-      } else {
-        onChange(newValue)
-      }
+      onChange(value, currentOption)
+    }
+    if (handleChange) {
+      handleChange(value, loadedData)
+    }
+    this.setInputBySelectValue(isMultiSelect ? '' : value)
+  }
+
+  /** Действия при открытии списка опций */
+  onShowOptions = () => {
+    if (this.state.inputValue === '') {
+      this.onLoad('')
     }
   }
 
-  handleClickOutside = () => {
-    this.handleHideOptions()
+  /** Переключение списка опций */
+  onOptionsToggle = (isOpened: boolean) => {
+    if (isOpened) {
+      this.onShowOptions()
+    }
   }
 
-  setInputElement = (ref) => {
-    if (ref) this.inputElement = ref
-  }
-
-  handleClearButton = (e: React.MouseEvent<SVGElement, MouseEvent>) => {
-    // Отменяем обработку клика по триггеру.
-    e.stopPropagation()
-
-    const { onClear } = this.props
-
-    onClear && onClear()
+  /** Сброс значения селекта */
+  onClear = () => {
+    this.selectOnChange(this.props.isMultiSelect ? null : '')
+    this.onLoad('')
   }
 
   render() {
     const {
-      props,
-      state: { showOptions },
-    } = this
+      name,
+      placeholder,
+      options,
+      withButton,
+      buttonText,
+      children,
+      meta,
+      onButtonClick,
+      onLoadOptions,
+      ...props
+    } = this.props
 
-    const { isMultiSelect, mod } = this.props
-    let optionsElement: JSX.Element | null = null
-    let valueElement: JSX.Element | null = null
-    let valuesElement: JSX.Element | null = null
-    let inputElement: JSX.Element | null = null
-    let errorsElement: JSX.Element | null = null
-    let buttonElement: JSX.Element | null = null
-    let actionBarElement: JSX.Element | null = null
-    let emptyOptionsElement: JSX.Element | null = null
+    const { inputValue } = this.state
 
-    React.Children.map(props.children, (child) => {
-      if (React.isValidElement(child) && child.type) {
-        switch ((child.type as typeof child.type & { displayName: string }).displayName) {
-          // Список опций.
-          case SelectOptions.displayName:
-            optionsElement = child
-            break
-          // Выводимое значение.
-          case SelectValue.displayName:
-            valueElement = child
-            break
-          // Обёртка выводимого значения.
-          case SelectMultiValues.displayName:
-            valuesElement = child
-            break
-          // Вывод ошибок валидации.
-          case SelectErrors.displayName:
-            errorsElement = child
-            break
-          // Поле ввода.
-          case SelectInput.displayName:
-            inputElement = child
-            break
-          // Кнопка.
-          case SelectButton.displayName:
-            if (!props.disabled) {
-              buttonElement = child
-            }
-            break
-          // элемент "Список пуст"
-          case SelectEmpty.displayName:
-            emptyOptionsElement = child
-            break
-          //
-          case SelectActionBar.displayName:
-            actionBarElement = child
-            break
-        }
-      }
-    })
-
-    const isValue = hasValue(props.value)
-
-    const styleMods: IStyleMods = {
-      disabled: props.disabled,
-      isShowOptions: showOptions,
-      isError: props.isError,
-      isValue,
-      isLabel: Boolean(props.label),
-      noUnderline: props.noUnderline,
-      isExtendable: props.isExtendable,
-      isReadOnly: props.readOnly,
-      mod,
-    }
-
-    const contextProps = {
-      value: this.props.value,
-      placeholder: this.props.placeholder,
-      isLoading: this.props.isLoading,
-      isMultiSelect: isMultiSelect,
-      styleMods,
-      onOptionSelect: this.handleSelectOption,
-      onBadgeRemove: this.handleRemoveOption,
-      setInputElement: this.setInputElement,
-    }
     return (
-      <SelectStyled className={props.className} {...styleMods}>
-        <SelectContext.Provider value={contextProps}>
-          <Inner
-            onClick={!props.readOnly ? this.handleToggleOptions : undefined}
-            tabIndex={props.disabled || inputElement ? -1 : 0}
-            {...styleMods}
-            title={props.label}
-            mod={mod}
-          >
-            <ValueWrapper {...styleMods}>
-              {isMultiSelect ? valuesElement : valueElement}
-              {!isValue && showOptions && <Placeholder>{props.placeholder}</Placeholder>}
-              {props.label && !(mod === 'simpleStyle') && (
-                <Label asterix={!props.readOnly && props.required} {...styleMods}>
-                  {props.label}
-                </Label>
-              )}
-            </ValueWrapper>
+      <SelectLayout
+        {...props}
+        onChange={this.selectOnChange}
+        placeholder={!props.value ? placeholder : ''}
+        isClearable
+        onOptionsToggle={this.onOptionsToggle}
+        onClear={this.onClear}
+      >
+        <SelectLayout.Input
+          name={name}
+          onChange={this.inputOnChange}
+          value={inputValue || ''}
+          type="text"
+          readOnly={props.readOnly}
+        />
 
-            {errorsElement}
-            <SelectControlBar>
-              {props.isLoading && <SelectLoader width="15px" borderwidth="2px" center />}
-              {actionBarElement}
-              {buttonElement}
-              {!props.isNotClearable &&
-                !props.readOnly &&
-                props.isClearable &&
-                isValue &&
-                !props.disabled &&
-                !(mod === 'simpleStyle') && (
-                  <SelectClearButtonIcon onClick={this.handleClearButton} />
-                )}
-              {!props.readOnly && <SelectArrowButtonIcon isShowOptions={showOptions} />}
-            </SelectControlBar>
-          </Inner>
-          {showOptions && (
-            <OptionsWrapper>
-              {!(mod === 'simpleStyle') && inputElement}
-              {optionsElement}
-              {emptyOptionsElement}
-            </OptionsWrapper>
-          )}
-        </SelectContext.Provider>
-      </SelectStyled>
+        {children}
+
+        {withButton && (
+          <SelectLayout.Button onClick={onButtonClick}>{buttonText}</SelectLayout.Button>
+        )}
+        {meta && meta.touched && meta.error && (
+          <SelectLayout.Errors>{meta.error}</SelectLayout.Errors>
+        )}
+      </SelectLayout>
     )
   }
 }
-
-export const Select = enhanceWithClickOutside(BaseSelect)

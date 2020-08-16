@@ -2,7 +2,7 @@ export {
   loadLookup,
   lookupSagas,
   lookupReducer,
-  ISelectProps,
+  ISelectBaseProps,
   selectDucks,
   createSelect,
   labelDucks,

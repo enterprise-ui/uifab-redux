@@ -3,7 +3,7 @@ import { ELabelType, ILookupConfig, ILoadOptionsQuery, IPushLookupItems } from '
 import { PayloadAction } from 'typesafe-actions'
 
 export interface ISelectDucksParams extends ILookupConfig {
-  selectKey: string
+  optionValueKey: string
 }
 type TActions = typeof actions
 export interface ISelectActions extends TActions {
@@ -17,7 +17,7 @@ const presets: Record<ELabelType, Partial<ILookupConfig>> = {
   pageable: {
     method: 'post',
     contentPath: 'content',
-    selectKey: 'id',
+    optionValueKey: 'id',
   },
   paginalWithQuery: {
     method: 'post',
@@ -28,7 +28,7 @@ const presets: Record<ELabelType, Partial<ILookupConfig>> = {
   },
   enum: {
     method: 'get',
-    selectKey: 'key',
+    optionValueKey: 'key',
   },
 }
 
@@ -50,7 +50,7 @@ export const selectDucks = (
     actions.pushLookupItems({
       endpointName: selectConfig.endpointName,
       options: selectConfig.isMultiSelect ? currentOption : [currentOption],
-      selectKey: selectConfig.selectKey,
+      optionValueKey: selectConfig.optionValueKey,
     })
 
   return {

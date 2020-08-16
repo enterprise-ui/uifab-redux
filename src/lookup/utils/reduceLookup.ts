@@ -1,9 +1,9 @@
 import { TLookup } from '../interfaces/lookup'
 
-export const reduceLookup = (lookup: Record<string, any>[], selectKey?: string): TLookup => {
-  console.log('reduceLookup func', { lookup, selectKey })
+export const reduceLookup = (lookup: Record<string, any>[], optionValueKey?: string): TLookup => {
+  console.log('reduceLookup func', { lookup, optionValueKey })
   return lookup.reduce((result, item) => {
-    result[item[selectKey || 'id']] = item
+    result[item[optionValueKey || 'id']] = item
     return result
   }, {})
 }

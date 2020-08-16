@@ -14,8 +14,8 @@ const presets: Record<ELabelType, Partial<ILookupConfig>> = {
   pageable: {
     method: 'post',
     contentPath: 'content',
-    selectKey: 'id',
-    valueField: 'uuids',
+    optionValueKey: 'id',
+    labelIdsKey: 'uuids',
   },
   paginalWithQuery: {
     method: 'post',
@@ -23,11 +23,11 @@ const presets: Record<ELabelType, Partial<ILookupConfig>> = {
       page: 0,
       size: 100,
     },
-    valueField: 'uuids',
+    labelIdsKey: 'uuids',
   },
   enum: {
     method: 'get',
-    selectKey: 'key',
+    optionValueKey: 'key',
   },
 }
 

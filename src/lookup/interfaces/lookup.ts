@@ -8,23 +8,43 @@ export enum ELabelType {
   enum = 'enum',
 }
 export interface ILookupConfig {
+  /** Имя эндпоинта */
   endpointName: string
-  endpointBranch?: string
+  /** Объект с параметрами для адресного шаблона */
   templateResolver?: object
+  /** Текст для подписи селекта */
   label?: string
+  /** Пресет конфигурации */
   type?: ELabelType
+  /**
+   * Объект с параметрами фильтрации запрашиваемого списка.
+   * Включается в запрос разыменования начального значения
+   */
   labelFilter?: object
+  /**
+   * Объект с параметрами фильтрации запрашиваемого списка.
+   * Включается в запросы для получения списка опций
+   */
   selectFilter?: object
+  /**
+   * Объект с параметрами фильтрации запрашиваемого списка.
+   * Включается во все запросы
+   * */
   filter?: object
+  /** Путь до массива с данными в структуре ответа сервера */
   contentPath?: string
-  viewField?: string
-  valueField?: string
-  selectKey?: string
+  /** Ключ, в который кладем вводимый пользователем поисковый запрос */
+  selectSearchKey?: string
+  /** Ключ, в который кладем массив разыменовываемых id (ids, uuids, ...) */
+  labelIdsKey?: string
+  /** Ключ, в котором находится значение выбираемой опции */
+  optionValueKey?: string
   isMultiSelect?: boolean
   method?: string
   query?: object
   requestBody?: object
-  selectFilterOptions?: <T>(options: T[]) => T[]
+  /** Функция преобразования вернувшихся от сервера опций */
+  responseOptionsTransform?: <T>(options: T[]) => T[]
   selectRequestBuilder?(text: string, props?: object): object
   labelRequestBuilder?(values: string | string[], props?: object): object
 }
@@ -63,7 +83,7 @@ export interface ILoadOptionsError {
 export interface IPushLookupItems {
   endpointName: string
   options: object[]
-  selectKey?: string
+  optionValueKey?: string
 }
 
 export interface ILabelProps extends ILoadOptionsQuery {
@@ -81,7 +101,6 @@ export interface ILabelProps extends ILoadOptionsQuery {
 export interface ISelectBaseProps extends ILoadOptionsQuery {
   value: TLookupInputValue
   placeholder?: string
-  label?: string
   mod?: string
   isReversed?: boolean
   isLoading: boolean // from connect
@@ -90,13 +109,4 @@ export interface ISelectBaseProps extends ILoadOptionsQuery {
   currentOption: object // from connect
   onChange?(value: TLookupInputValue, currentOption?: object): void // from connect
   onLoadOptions?(text?: string): void // from connect
-}
-
-export interface ISelectProps extends Partial<ILoadOptionsQuery> {
-  value?: TLookupInputValue
-  placeholder?: string
-  label?: string
-  mod?: string
-  isReversed?: boolean
-  onChange?(value: TLookupInputValue): void
 }

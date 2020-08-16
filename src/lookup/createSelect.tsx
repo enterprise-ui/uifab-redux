@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { connect } from 'react-redux'
 import get from 'lodash/get'
+import { SelectLayout } from './components/Select/SelectLayout'
 import { Select } from './components/Select/Select'
-import { AsyncSelect } from './components/AsyncSelect'
-import { TLookupInputValue, ISelectBaseProps, ISelectProps } from './interfaces/lookup'
+import { TLookupInputValue, ISelectBaseProps } from './interfaces/lookup'
 import { labelDucks } from './labelDucks'
 import { createLabel } from './createLabel'
 import { valueIsArrayAndExist } from '../utils/valueIsArrayAndExist'
@@ -15,12 +15,11 @@ export const createSelect = (params: ISelectDucksParams, selectActions: ISelectA
   const { endpointName, isMultiSelect, filter: filterFromConfig } = params
 
   const { labelConfig, labelActions } = labelDucks(params)
-  const SelectLabel = createLabel(labelConfig, labelActions)(SelectValue)
+  const Label = createLabel(labelConfig, labelActions)(SelectValue)
 
   const SelectBase: React.FC<ISelectBaseProps> = ({
     value,
     options = [],
-    viewField,
     children,
     filter,
     isReversed,
@@ -32,7 +31,7 @@ export const createSelect = (params: ISelectDucksParams, selectActions: ISelectA
     const newOptions = isReversed ? options.slice(0).reverse() : options
 
     return (
-      <AsyncSelect
+      <Select
         {...props}
         isMultiSelect={isMultiSelect}
         value={value}
@@ -40,32 +39,34 @@ export const createSelect = (params: ISelectDucksParams, selectActions: ISelectA
         placeholder={placeholder}
       >
         {isMultiSelect ? (
-          <Select.Values>
+          <SelectLayout.Values>
             {valueIsArrayAndExist(value) &&
               value
                 .slice(0)
                 .sort()
                 .map((val) => (
-                  <Select.Badge value={val} key={val}>
-                    <SelectLabel {...props} value={val} mod={viewField} />
-                  </Select.Badge>
+                  <SelectLayout.Badge value={val} key={val}>
+                    <Label {...props} value={val} />
+                  </SelectLayout.Badge>
                 ))}
-          </Select.Values>
+          </SelectLayout.Values>
         ) : (
-          <Select.Value mod={props.mod}>
-            <SelectLabel {...props} value={value} mod={viewField} />
-          </Select.Value>
+          <SelectLayout.Value mod={props.mod}>
+            <Label {...props} value={value} />
+          </SelectLayout.Value>
         )}
-        <Select.Options>
+        <SelectLayout.Options>
           {newOptions.map((option, index) => (
-            <Select.Option value={option[params.selectKey]} key={index}>
-              <SelectValue {...option} mod={viewField} />
-            </Select.Option>
+            <SelectLayout.Option value={option[params.optionValueKey]} key={index}>
+              <SelectValue {...option} />
+            </SelectLayout.Option>
           ))}
-          {!Boolean(newOptions && newOptions.length) && <Select.Empty>Список пуст</Select.Empty>}
-        </Select.Options>
+          {!Boolean(newOptions && newOptions.length) && (
+            <SelectLayout.Empty>Список пуст</SelectLayout.Empty>
+          )}
+        </SelectLayout.Options>
         {typeof children === 'function' ? children(props) : children}
-      </AsyncSelect>
+      </Select>
     )
   }
 
@@ -114,5 +115,7 @@ export const createSelect = (params: ISelectDucksParams, selectActions: ISelectA
     }
   }
 
-  return connect(mapStateToProps, mapDispatchToProps)(SelectBase) as React.FC<ISelectProps>
+  return connect(mapStateToProps, mapDispatchToProps)(SelectBase) as React.FC<
+    Partial<ISelectBaseProps> & Pick<ISelectBaseProps, 'value' | 'onChange'>
+  >
 }
