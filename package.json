@@ -1,8 +1,10 @@
 {
   "name": "@enterprise-ui/uifab-redux",
-  "version": "1.0.0",
+  "version": "0.1.3",
   "main": "dist/index.js",
-  "devMain": "src/index.ts",
+  "typings": "dist/index.d.ts",
+  "repository": "git@github.com:enterprise-ui/uifab-redux.git",
+  "license": "MIT",
   "engines": {
     "node": ">=8",
     "npm": ">=5"
@@ -119,8 +121,7 @@
     "typesafe-actions": "^5.1.0",
     "typescript": "^3.9.7",
     "uglify-es": "^3.3.9",
-    "url-template": "^2.0.8",
-    "webpack-blocks": "2.0.1"
+    "url-template": "^2.0.8"
   },
   "module": "dist/es/index.js",
   "jsnext:main": "dist/es/index.js",
